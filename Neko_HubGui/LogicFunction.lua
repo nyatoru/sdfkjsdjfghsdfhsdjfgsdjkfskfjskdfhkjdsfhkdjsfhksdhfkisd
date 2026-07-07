@@ -2246,70 +2246,82 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =====================================================================
--- KILLER NOTIFICATION
+-- KILLER NOTIFICATION (one-time on match start)
 -- =====================================================================
-local killerNotifGui = Instance.new("ScreenGui")
-killerNotifGui.Name = "NekoKillerNotif"
-killerNotifGui.ResetOnSpawn = false
-killerNotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-killerNotifGui.Parent = gethui and gethui() or PlayerGui
-
-local killerNotifBg = Instance.new("Frame")
-killerNotifBg.Size = UDim2.new(0, 280, 0, 36)
-killerNotifBg.Position = UDim2.new(0.5, -140, 0, 10)
-killerNotifBg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-killerNotifBg.BackgroundTransparency = 0.3
-killerNotifBg.BorderSizePixel = 0
-killerNotifBg.Parent = killerNotifGui
-
-local killerNotifCorner = Instance.new("UICorner")
-killerNotifCorner.CornerRadius = UDim.new(0, 10)
-killerNotifCorner.Parent = killerNotifBg
-
-local killerNotifText = Instance.new("TextLabel")
-killerNotifText.Size = UDim2.new(1, 0, 1, 0)
-killerNotifText.BackgroundTransparency = 1
-killerNotifText.Font = Enum.Font.GothamBold
-killerNotifText.TextSize = 16
-killerNotifText.TextColor3 = Color3.fromRGB(255, 255, 255)
-killerNotifText.Parent = killerNotifBg
-
-local function updateKillerNotif()
+local function showKillerNotification()
     local team = LocalPlayer.Team
     local teamNameStr = team and team.Name or ""
 
-    if string.find(string.lower(teamNameStr), "killer") or string.find(string.lower(teamNameStr), "hunter") then
-        killerNotifText.Text = "⚔ YOU ARE THE KILLER"
-        killerNotifText.TextColor3 = Color3.fromRGB(255, 70, 80)
-        killerNotifBg.Visible = true
-        return
-    end
+    local text: string
+    local color: Color3
 
-    local killerName = "?"
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local t = p.Team
-            local tn = t and t.Name or ""
-            if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
-                killerName = p.Name
-                break
+    if string.find(string.lower(teamNameStr), "killer") or string.find(string.lower(teamNameStr), "hunter") then
+        text = "⚔ YOU ARE THE KILLER"
+        color = Color3.fromRGB(255, 70, 80)
+    else
+        local killerName = "?"
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local t = p.Team
+                local tn = t and t.Name or ""
+                if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
+                    killerName = p.Name
+                    break
+                end
             end
         end
+        if killerName == "?" then return end
+        text = "⚠ Killer: " .. killerName
+        color = Color3.fromRGB(255, 200, 100)
     end
 
-    if killerName ~= "?" then
-        killerNotifText.Text = "⚠ Killer: " .. killerName
-        killerNotifText.TextColor3 = Color3.fromRGB(255, 200, 100)
-        killerNotifBg.Visible = true
-    else
-        killerNotifBg.Visible = false
-    end
+    local notifGui = Instance.new("ScreenGui")
+    notifGui.Name = "NekoKillerNotif"
+    notifGui.ResetOnSpawn = false
+    notifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    notifGui.Parent = gethui and gethui() or PlayerGui
+
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(0, 280, 0, 36)
+    bg.Position = UDim2.new(0.5, -140, 0, 10)
+    bg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    bg.BackgroundTransparency = 0.3
+    bg.BorderSizePixel = 0
+    bg.Parent = notifGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = bg
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 16
+    label.TextColor3 = color
+    label.Text = text
+    label.Parent = bg
+
+    task.delay(4, function()
+        notifGui:Destroy()
+    end)
 end
+
+local notifShown = false
+LocalPlayer.CharacterAdded:Connect(function()
+    notifShown = false
+end)
 
 task.spawn(function()
     while true do
+        if not notifShown and LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                notifShown = true
+                showKillerNotification()
+            end
+        end
         task.wait(1)
-        updateKillerNotif()
     end
 end)
 
