@@ -403,6 +403,7 @@ end
 local autoSkillcheckEnabled = false
 local scTriggered = false
 local SkillCheckResultEvent, SkillCheckEvent = nil, nil
+local SkillCheckEventConn = nil
 local generatorModel, generatorPoint = nil, nil
 
 local CONFIG_SC = {
@@ -413,14 +414,16 @@ local CONFIG_SC = {
 }
 
 local function resolveGeneratorRemotes()
+    if not autoSkillcheckEnabled then return end
     local ok, genFolder = pcall(function()
         return ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("Generator", 5)
     end)
     if ok and genFolder then
         SkillCheckResultEvent = genFolder:FindFirstChild("SkillCheckResultEvent")
         SkillCheckEvent       = genFolder:FindFirstChild("SkillCheckEvent")
-        if SkillCheckEvent then
-            SkillCheckEvent.OnClientEvent:Connect(function(gm, gp)
+        if SkillCheckEvent and not SkillCheckEventConn then
+            SkillCheckEventConn = SkillCheckEvent.OnClientEvent:Connect(function(gm, gp)
+                if not autoSkillcheckEnabled then return end
                 generatorModel, generatorPoint = gm, gp
             end)
         end
@@ -440,7 +443,6 @@ local function doSkillcheckSuccess(line, goal)
     local char = LocalPlayer.Character
     local scr = char and char:FindFirstChild("Skillcheck-gen")
     if scr then
-        pcall(function() scr.Disabled = true end)
         local great = scr:FindFirstChild("Great")
         if great then pcall(function() great:Play() end) end
     end
@@ -462,7 +464,6 @@ local function doSkillcheckSuccess(line, goal)
             line.Rotation = 0
             goal.Rotation = 0
         end)
-        if scr then pcall(function() scr.Disabled = false end) end
     end)
 end
 
@@ -497,8 +498,6 @@ RunService.Heartbeat:Connect(function()
         doSkillcheckSuccess(line, goal)
     end
 end)
-
-task.spawn(resolveGeneratorRemotes)
 
 -- =====================================================================
 -- VISUAL (ESP) MODULE
@@ -1210,6 +1209,18 @@ local Logic = {
         end,
         SetAutoSkillcheck = function(enabled: boolean)
             autoSkillcheckEnabled = enabled
+            if enabled then
+                task.spawn(resolveGeneratorRemotes)
+            else
+                if SkillCheckEventConn then
+                    SkillCheckEventConn:Disconnect()
+                    SkillCheckEventConn = nil
+                end
+                SkillCheckResultEvent = nil
+                SkillCheckEvent = nil
+                generatorModel = nil
+                generatorPoint = nil
+            end
         end
     },
     ESP = ESP,
