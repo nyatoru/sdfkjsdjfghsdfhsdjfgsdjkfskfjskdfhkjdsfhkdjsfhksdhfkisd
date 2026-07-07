@@ -638,6 +638,31 @@ local function ensureDistLoop()
             local root = if char then char:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
             if root then
                 local rootPos = root.Position
+
+                -- Re-track any untracked players (handles respawn timing)
+                if isKindActive("Player") then
+                    for _, plr in ipairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer then
+                            local plrChar = plr.Character
+                            if plrChar and plrChar.Parent and not tracked[plrChar] then
+                                local hum = plrChar:FindFirstChildOfClass("Humanoid")
+                                if hum and hum.Health > 0 then
+                                    applyPlayer(plrChar, plr)
+                                end
+                            end
+                        end
+                    end
+                end
+
+                -- Cleanup dead player ESP
+                for model, t in pairs(tracked) do
+                    if t.kind == "Player" then
+                        local hum = model:FindFirstChildOfClass("Humanoid")
+                        if not hum or hum.Health <= 0 or not model.Parent then
+                            cleanup(model)
+                        end
+                    end
+                end
                 for _, t in pairs(tracked) do
                     if t.sub and t.anchor and t.anchor.Parent then
                         if t.kind ~= "Generator" then
