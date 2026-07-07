@@ -586,6 +586,69 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- =====================================================================
+-- FAST VAULT MODULE
+-- =====================================================================
+
+local fastVaultEnabled = false
+local fastVaultSpeed = 1.2
+local vaultReplaceMap: { [string]: string } = {
+    ["rbxassetid://83873880822918"] = "rbxassetid://136962284480779"
+}
+local vaultTracks: { [AnimationTrack]: boolean } = {}
+
+local function normalizeVaultId(id: string): string?
+    local num = tostring(id):match("%d+")
+    return num and ("rbxassetid://" .. num)
+end
+
+local function hookVault(char: Model)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then return end
+
+    animator.AnimationPlayed:Connect(function(track)
+        if not fastVaultEnabled then return end
+
+        local anim = track.Animation
+        if not anim or not anim.AnimationId then return end
+
+        local id = normalizeVaultId(anim.AnimationId)
+        if not id then return end
+
+        local replaceId = vaultReplaceMap[id]
+        if not replaceId then return end
+
+        if vaultTracks[track] then return end
+        vaultTracks[track] = true
+
+        track:Stop()
+
+        local newAnim = Instance.new("Animation")
+        newAnim.AnimationId = replaceId
+
+        local newTrack = animator:LoadAnimation(newAnim)
+        newTrack.Priority = Enum.AnimationPriority.Action
+        newTrack:Play()
+        newTrack:AdjustSpeed(fastVaultSpeed)
+
+        newTrack.Stopped:Connect(function()
+            vaultTracks[track] = nil
+        end)
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    hookVault(char)
+end)
+
+if LocalPlayer.Character then
+    hookVault(LocalPlayer.Character)
+end
+
+-- =====================================================================
 -- VISUAL (ESP) MODULE
 -- =====================================================================
 
@@ -1405,6 +1468,12 @@ local Logic = {
         end,
         SetPalletDistance = function(dist: number)
             TRIGGER_DISTANCE = dist
+        end,
+        SetFastVault = function(enabled: boolean)
+            fastVaultEnabled = enabled
+        end,
+        SetFastVaultSpeed = function(speed: number)
+            fastVaultSpeed = speed
         end
     },
     ESP = ESP,

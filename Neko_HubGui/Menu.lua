@@ -138,6 +138,29 @@ SkillcheckSection:Toggle({
     end
 })
 
+local VaultSection = CombatTab:Section({ Title = "Fast Vault" })
+VaultSection:Toggle({
+    Title = "Fast Vault",
+    Desc = "Replace vault animation with faster one",
+    Value = false,
+    Callback = function(value: boolean)
+        if Combat and Combat.SetFastVault then
+            Combat.SetFastVault(value)
+        end
+    end
+})
+
+VaultSection:Slider({
+    Title = "Animation Speed",
+    Value = { Min = 1.0, Max = 5.0, Default = 1.2 },
+    Callback = function(value: number)
+        local stepped = math.round(value * 10) / 10
+        if Combat and Combat.SetFastVaultSpeed then
+            Combat.SetFastVaultSpeed(stepped)
+        end
+    end
+})
+
 -- Visual Tab (ESP Settings)
 local ESPSection = VisualTab:Section({ Title = "ESP Settings" })
 ESPSection:Toggle({
