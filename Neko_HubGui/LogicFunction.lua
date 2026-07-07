@@ -662,11 +662,13 @@ local function ensureDistLoop()
                 local rootPos = root.Position
                 for _, t in pairs(tracked) do
                     if t.sub and t.anchor and t.anchor.Parent then
-                        if t.wantDist and espShowDistance then
-                            local dist = math.floor((t.anchor.Position - rootPos).Magnitude)
-                            t.sub.Text = string.format("[%dm]", dist)
-                        elseif not espShowDistance then
-                            t.sub.Text = ""
+                        if t.kind ~= "Generator" then
+                            if t.wantDist and espShowDistance then
+                                local dist = math.floor((t.anchor.Position - rootPos).Magnitude)
+                                t.sub.Text = string.format("[%dm]", dist)
+                            elseif t.wantDist and not espShowDistance then
+                                t.sub.Text = ""
+                            end
                         end
                     end
                     if t.nameL then
