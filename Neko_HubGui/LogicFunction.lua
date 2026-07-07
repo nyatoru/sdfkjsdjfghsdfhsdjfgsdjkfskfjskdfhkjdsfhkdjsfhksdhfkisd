@@ -496,7 +496,6 @@ RunService.RenderStepped:Connect(function()
 
     if success then
         scBusy = true
-        lastLineRotation = nil
         task.spawn(function()
             if game:GetService("UserInputService").TouchEnabled then
                 triggerMobileButton()
