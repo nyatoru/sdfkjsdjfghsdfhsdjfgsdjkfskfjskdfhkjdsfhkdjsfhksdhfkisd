@@ -633,6 +633,7 @@ end
 local function ensureDistLoop()
     if distLoopRunning then return end
     distLoopRunning = true
+    local lastDistances: { [Instance]: number } = {}
     task.spawn(function()
         while espMasterEnabled and next(tracked) ~= nil do
             local char = LocalPlayer.Character
@@ -655,30 +656,40 @@ local function ensureDistLoop()
                     end
                 end
 
-                -- Cleanup dead player ESP
+                -- Single loop: cleanup + distance + name + player state
                 for model, t in pairs(tracked) do
+                    -- Cleanup dead/removed players
                     if t.kind == "Player" then
                         local hum = model:FindFirstChildOfClass("Humanoid")
                         if not hum or hum.Health <= 0 or not model.Parent then
                             cleanup(model)
+                            continue
                         end
                     end
-                end
-                for _, t in pairs(tracked) do
-                    if t.sub and t.anchor and t.anchor.Parent then
-                        if t.kind ~= "Generator" then
-                            if t.wantDist and espShowDistance then
-                                local dist = math.floor((t.anchor.Position - rootPos).Magnitude)
+
+                    -- Distance text (skip if moved < 1m since last update)
+                    if t.sub and t.anchor and t.anchor.Parent and t.kind ~= "Generator" then
+                        if t.wantDist and espShowDistance then
+                            local dist = math.floor((t.anchor.Position - rootPos).Magnitude)
+                            local last = lastDistances[model]
+                            if not last or math.abs(dist - last) >= 1 then
                                 t.sub.Text = string.format("[%dm]", dist)
-                            elseif t.wantDist and not espShowDistance then
+                                lastDistances[model] = dist
+                            end
+                        elseif t.wantDist and not espShowDistance then
+                            if lastDistances[model] then
                                 t.sub.Text = ""
+                                lastDistances[model] = nil
                             end
                         end
                     end
+
+                    -- Name visibility
                     if t.nameL then
                         t.nameL.Visible = espShowName
                     end
-                    -- Player state: check if downed and update color/name
+
+                    -- Player state (only when toggled on)
                     if espPlayerState and t.kind == "Player" and t.anchor and t.anchor.Parent then
                         local plrChar = t.anchor:FindFirstAncestorOfClass("Model")
                         if plrChar then
@@ -704,7 +715,6 @@ local function ensureDistLoop()
                                     t.nameL.TextColor3 = espColors.PlayerDowned
                                 end
                             else
-                                -- Restore original color
                                 local origCol = espColors.Player
                                 local plr = Players:GetPlayerFromCharacter(plrChar)
                                 if plr then
