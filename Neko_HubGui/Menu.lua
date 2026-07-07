@@ -214,7 +214,7 @@ ESPSection:Toggle({
 ESPSection:Dropdown({
     Title = "Select Esp",
     Desc = "Choose which ESP elements to display",
-    Values = { "Player", "Generator", "Pallet", "Window", "Zombie" },
+    Values = { "Player", "Generator", "Pallet", "Window", "Hook", "Zombie" },
     Value = {},
     Multi = true,
     Flag = "neko_esp_select",
@@ -324,6 +324,18 @@ ESPColorSection:Colorpicker({
     Callback = function(value: Color3)
         if ESP and ESP.SetColor then
             ESP.SetColor("Window", value)
+            NekoConfig:Save()
+        end
+    end
+})
+
+ESPColorSection:Colorpicker({
+    Title = "Hook Color",
+    Default = Color3.fromRGB(170, 92, 255),
+    Flag = "neko_color_hook",
+    Callback = function(value: Color3)
+        if ESP and ESP.SetColor then
+            ESP.SetColor("Hook", value)
             NekoConfig:Save()
         end
     end

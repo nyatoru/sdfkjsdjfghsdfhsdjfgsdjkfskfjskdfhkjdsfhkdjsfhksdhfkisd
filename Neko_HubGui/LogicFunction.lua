@@ -862,11 +862,12 @@ local COLOR_GEN_DONE = Color3.fromRGB(0, 255, 120)
 local COLOR_PALLET   = Color3.fromRGB(255, 215, 0)
 local COLOR_WINDOW  = Color3.fromRGB(74, 255, 181)
 local COLOR_ZOMBIE  = Color3.fromRGB(255, 60, 60)
+local COLOR_HOOK    = Color3.fromRGB(170, 92, 255)
 local COLOR_PLAYER  = Color3.fromRGB(0, 255, 170)
 local COLOR_KILLER  = Color3.fromRGB(255, 60, 60)
 local COLOR_OUTLINE = Color3.fromRGB(255, 255, 255)
 
-type ESPKind = "Generator" | "Pallet" | "Window" | "SCP" | "Player"
+type ESPKind = "Generator" | "Pallet" | "Window" | "SCP" | "Player" | "Hook"
 
 type TrackedEntry = {
     hl: Highlight?,
@@ -895,6 +896,7 @@ local espColors: { [string]: Color3 } = {
     Pallet = COLOR_PALLET,
     Window = COLOR_WINDOW,
     SCP = COLOR_ZOMBIE,
+    Hook = COLOR_HOOK,
     Player = COLOR_PLAYER,
     PlayerDowned = COLOR_DOWNED,
 }
@@ -904,7 +906,8 @@ local selectedKinds: { [string]: boolean } = {
     Pallet = false,
     Window = false,
     SCP = false,
-    Player = false
+    Hook = false,
+    Player = false,
 }
 
 local activeKinds: { [string]: boolean } = {
@@ -912,7 +915,8 @@ local activeKinds: { [string]: boolean } = {
     Pallet = false,
     Window = false,
     SCP = false,
-    Player = false
+    Hook = false,
+    Player = false,
 }
 
 local tracked: { [Instance]: TrackedEntry } = {}
@@ -1247,6 +1251,26 @@ local function startWindow()
     ensureDistLoop()
 end
 
+-- Hook ESP
+local function isHook(m: Instance): boolean
+    return m:IsA("Model") and (string.find(string.lower(m.Name), "hook") ~= nil and m:FindFirstChild("HookPoint") ~= nil)
+end
+
+local function applyHook(model: Model)
+    if tracked[model] then return end
+    local anchor = model:FindFirstChild("HookPoint") :: BasePart? or model:FindFirstChildWhichIsA("BasePart") :: BasePart?
+    if not anchor then return end
+    local color = espColors.Hook
+    local hl = mkHighlight(model, color)
+    local bill, nameL, sub = mkBillboard(anchor, color, "Hook")
+    tracked[model] = { hl = hl, bill = bill, anchor = anchor, nameL = nameL, sub = sub, wantDist = true, kind = "Hook" }
+end
+
+local function startHook()
+    resyncMap()
+    ensureDistLoop()
+end
+
 -- SCP / Zombie ESP
 local function anchorZombie(model: Model): BasePart?
     local hrp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("Torso") or model:FindFirstChild("Head")
@@ -1306,6 +1330,9 @@ local function classifyAndTrack(obj: Instance)
         elseif isKindActive("Window") and isWindowObj(obj) then
             applyWindow(obj)
             hookRemoval(obj, "Window")
+        elseif isKindActive("Hook") and isHook(obj) then
+            applyHook(obj)
+            hookRemoval(obj, "Hook")
         elseif isKindActive("SCP") and isZombie(obj) then
             applyZombie(obj)
             hookRemoval(obj, "SCP")
@@ -1466,6 +1493,7 @@ local starters = {
     Generator = startGenerator,
     Pallet = startPallet,
     Window = startWindow,
+    Hook = startHook,
     SCP = startZombie
 }
 
@@ -1486,7 +1514,7 @@ Workspace.ChildAdded:Connect(function(child)
 end)
 
 function ESP.UpdateStates()
-    for _, kind in ipairs({"Generator", "Pallet", "Window", "SCP", "Player"}) do
+    for _, kind in ipairs({"Generator", "Pallet", "Window", "Hook", "SCP", "Player"}) do
         local shouldBeActive = espMasterEnabled and (selectedKinds[kind] == true)
         if shouldBeActive ~= activeKinds[kind] then
             activeKinds[kind] = shouldBeActive
@@ -1548,6 +1576,7 @@ function ESP.SetSelectedKinds(selected: any)
         Generator = false,
         Pallet = false,
         Window = false,
+        Hook = false,
         SCP = false,
         Player = false
     }
@@ -2214,6 +2243,74 @@ RunService.RenderStepped:Connect(function()
     aimVeilActive = AIM_CONFIG.veilSilentAim or AIM_CONFIG.veilAimLock
     updateAimGunIcon()
     updateAimVeilIcon()
+end)
+
+-- =====================================================================
+-- KILLER NOTIFICATION
+-- =====================================================================
+local killerNotifGui = Instance.new("ScreenGui")
+killerNotifGui.Name = "NekoKillerNotif"
+killerNotifGui.ResetOnSpawn = false
+killerNotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+killerNotifGui.Parent = gethui and gethui() or PlayerGui
+
+local killerNotifBg = Instance.new("Frame")
+killerNotifBg.Size = UDim2.new(0, 280, 0, 36)
+killerNotifBg.Position = UDim2.new(0.5, -140, 0, 10)
+killerNotifBg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+killerNotifBg.BackgroundTransparency = 0.3
+killerNotifBg.BorderSizePixel = 0
+killerNotifBg.Parent = killerNotifGui
+
+local killerNotifCorner = Instance.new("UICorner")
+killerNotifCorner.CornerRadius = UDim.new(0, 10)
+killerNotifCorner.Parent = killerNotifBg
+
+local killerNotifText = Instance.new("TextLabel")
+killerNotifText.Size = UDim2.new(1, 0, 1, 0)
+killerNotifText.BackgroundTransparency = 1
+killerNotifText.Font = Enum.Font.GothamBold
+killerNotifText.TextSize = 16
+killerNotifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+killerNotifText.Parent = killerNotifBg
+
+local function updateKillerNotif()
+    local team = LocalPlayer.Team
+    local teamNameStr = team and team.Name or ""
+
+    if string.find(string.lower(teamNameStr), "killer") or string.find(string.lower(teamNameStr), "hunter") then
+        killerNotifText.Text = "⚔ YOU ARE THE KILLER"
+        killerNotifText.TextColor3 = Color3.fromRGB(255, 70, 80)
+        killerNotifBg.Visible = true
+        return
+    end
+
+    local killerName = "?"
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local t = p.Team
+            local tn = t and t.Name or ""
+            if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
+                killerName = p.Name
+                break
+            end
+        end
+    end
+
+    if killerName ~= "?" then
+        killerNotifText.Text = "⚠ Killer: " .. killerName
+        killerNotifText.TextColor3 = Color3.fromRGB(255, 200, 100)
+        killerNotifBg.Visible = true
+    else
+        killerNotifBg.Visible = false
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        updateKillerNotif()
+    end
 end)
 
 -- ==================== INIT ========================
