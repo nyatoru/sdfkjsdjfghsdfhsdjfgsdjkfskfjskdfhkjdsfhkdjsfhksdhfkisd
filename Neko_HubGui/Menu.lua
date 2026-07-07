@@ -308,6 +308,29 @@ AimSection:Dropdown({
     end
 })
 
+local aimGunActive = true
+local aimGunButton = AimSection:Button({
+    Title = "Aim Gun: ON",
+    Desc = "Click to toggle aim gun on/off",
+    Icon = "crosshair",
+    IconAlign = "Left",
+    Color = Color3.fromRGB(0, 200, 0),
+    Callback = function()
+        aimGunActive = not aimGunActive
+        if aimGunActive then
+            Aim.SetSilentAim(true)
+            Aim.SetAimLock(true)
+            aimGunButton:SetTitle("Aim Gun: ON")
+            aimGunButton:SetDesc("Click to toggle aim gun on/off")
+        else
+            Aim.SetSilentAim(false)
+            Aim.SetAimLock(false)
+            aimGunButton:SetTitle("Aim Gun: OFF")
+            aimGunButton:SetDesc("Click to toggle aim gun on/off")
+        end
+    end
+})
+
 AimSection:Dropdown({
     Title = "Aim Target",
     Desc = "Target team selection",
@@ -396,6 +419,29 @@ AimVeilSection:Dropdown({
                 Aim.SetVeilSilentAim(true)
                 Aim.SetVeilAimLock(true)
             end
+        end
+    end
+})
+
+local aimVeilActive = true
+local aimVeilButton = AimVeilSection:Button({
+    Title = "Aim Veil: ON",
+    Desc = "Click to toggle aim veil on/off",
+    Icon = "crosshair",
+    IconAlign = "Left",
+    Color = Color3.fromRGB(0, 200, 0),
+    Callback = function()
+        aimVeilActive = not aimVeilActive
+        if aimVeilActive then
+            Aim.SetVeilSilentAim(true)
+            Aim.SetVeilAimLock(true)
+            aimVeilButton:SetTitle("Aim Veil: ON")
+            aimVeilButton:SetDesc("Click to toggle aim veil on/off")
+        else
+            Aim.SetVeilSilentAim(false)
+            Aim.SetVeilAimLock(false)
+            aimVeilButton:SetTitle("Aim Veil: OFF")
+            aimVeilButton:SetDesc("Click to toggle aim veil on/off")
         end
     end
 })
