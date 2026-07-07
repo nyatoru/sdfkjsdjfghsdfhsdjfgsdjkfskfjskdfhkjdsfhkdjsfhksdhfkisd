@@ -402,67 +402,29 @@ end
 -- =====================================================================
 local autoSkillcheckEnabled = false
 local scTriggered = false
-local SkillCheckResultEvent, SkillCheckEvent = nil, nil
-local generatorModel, generatorPoint = nil, nil
 
 local CONFIG_SC = {
     zoneMin      = 102,
     zoneMax      = 116,
-    zoneCenter   = 108,
     cleanupDelay = 0.15,
 }
 
-local function resolveGeneratorRemotes()
-    local ok, genFolder = pcall(function()
-        return ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("Generator", 5)
+local function pressSpace()
+    local VIM = game:GetService("VirtualInputManager")
+    VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+    task.delay(0.05, function()
+        VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
     end)
-    if ok and genFolder then
-        SkillCheckResultEvent = genFolder:FindFirstChild("SkillCheckResultEvent")
-        SkillCheckEvent       = genFolder:FindFirstChild("SkillCheckEvent")
-        if SkillCheckEvent then
-            SkillCheckEvent.OnClientEvent:Connect(function(gm, gp)
-                generatorModel, generatorPoint = gm, gp
-            end)
-        end
-    end
 end
 
-local function doSkillcheckSuccess(line, goal)
-    scTriggered = true
-    
-    local frozenRot = CONFIG_SC.zoneCenter + goal.Rotation
-    pcall(function()
-        local TweenService = game:GetService("TweenService")
-        TweenService:Create(line, TweenInfo.new(0), { Rotation = frozenRot }):Play()
-        line.Rotation = frozenRot
-    end)
-
-    local char = LocalPlayer.Character
-    local scr = char and char:FindFirstChild("Skillcheck-gen")
-    if scr then
-        pcall(function() scr.Disabled = true end)
-        local great = scr:FindFirstChild("Great")
-        if great then pcall(function() great:Play() end) end
-    end
-
-    if SkillCheckResultEvent and generatorModel and generatorPoint then
-        pcall(function()
-            SkillCheckResultEvent:FireServer("success", 1, generatorModel, generatorPoint)
-        end)
-    end
-
-    task.delay(CONFIG_SC.cleanupDelay, function()
-        pcall(function()
-            local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            local gui = PlayerGui and PlayerGui:FindFirstChild("SkillCheckPromptGui")
-            if gui then
-                local check = gui:FindFirstChild("Check")
-                if check then check.Visible = false end
-            end
-            line.Rotation = 0
-            goal.Rotation = 0
-        end)
-        if scr then pcall(function() scr.Disabled = false end) end
+local function triggerMobileButton()
+    local VIM = game:GetService("VirtualInputManager")
+    local UIS = game:GetService("UserInputService")
+    local cx, cy = UIS:GetMouseLocation().X, UIS:GetMouseLocation().Y
+    local TOUCH_ID = 8823
+    VIM:SendTouchEvent(TOUCH_ID, 0, cx, cy)
+    task.delay(0.05, function()
+        VIM:SendTouchEvent(TOUCH_ID, 2, cx, cy)
     end)
 end
 
@@ -488,17 +450,25 @@ RunService.Heartbeat:Connect(function()
     local goal = check:FindFirstChild("Goal")
     if not line or not goal then return end
 
-    local rotation = line.Rotation
-    local goalRotation = goal.Rotation
-    local minZone = CONFIG_SC.zoneMin + goalRotation
-    local maxZone = CONFIG_SC.zoneMax + goalRotation
+    local lr = line.Rotation % 360
+    local gr = goal.Rotation % 360
 
-    if rotation >= minZone and rotation <= maxZone then
-        doSkillcheckSuccess(line, goal)
+    local startRange = (gr + CONFIG_SC.zoneMin) % 360
+    local endRange   = (gr + CONFIG_SC.zoneMax) % 360
+
+    local success =
+        (startRange > endRange and (lr >= startRange or lr <= endRange))
+        or (lr >= startRange and lr <= endRange)
+
+    if success then
+        scTriggered = true
+        if game:GetService("UserInputService").TouchEnabled then
+            triggerMobileButton()
+        else
+            pressSpace()
+        end
     end
 end)
-
-task.spawn(resolveGeneratorRemotes)
 
 -- =====================================================================
 -- VISUAL (ESP) MODULE
