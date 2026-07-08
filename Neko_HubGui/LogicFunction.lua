@@ -407,14 +407,26 @@ local function isFeatureAllowed(): boolean
     return not lobbyLocked
 end
 
+local function setLobbyEsp(enabled: boolean)
+    for _, t in pairs(tracked) do
+        if t.hl then t.hl.Enabled = enabled end
+        if t.bill then t.bill.Enabled = enabled end
+    end
+end
+
+local function checkLobby()
+    local nowInGame = isInGame()
+    if nowInGame == (not lobbyLocked) then return end
+    lobbyLocked = not nowInGame
+    if lobbyLocked then
+        setLobbyEsp(false)
+    else
+        setLobbyEsp(true)
+    end
+end
+
 LocalPlayer:GetPropertyChangedSignal("Team"):Connect(checkLobby)
 checkLobby()
-                break
-            end
-        end
-        dodgeSkillPending = false
-    end)
-end
 
 onKillerAnim(function(plr, idRaw, animId)
     if idRaw and tostring(idRaw):find(ABYSS_SKILL_ID) then triggerDodge() end
