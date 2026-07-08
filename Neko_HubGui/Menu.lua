@@ -266,13 +266,13 @@ ESPSection:Toggle({
 })
 
 ESPSection:Toggle({
-    Title = "Hide Done Generator",
-    Desc = "Hide generator ESP when fully repaired (100%)",
-    Value = false,
-    Flag = "neko_esp_hidedone",
+    Title = "Show Done Generator",
+    Desc = "Show generator ESP when fully repaired (100%)",
+    Value = true,
+    Flag = "neko_esp_showdone",
     Callback = function(value: boolean)
-        if ESP and ESP.SetHideDoneGen then
-            ESP.SetHideDoneGen(value)
+        if ESP and ESP.SetShowDoneGen then
+            ESP.SetShowDoneGen(value)
             NekoConfig:Save()
         end
     end

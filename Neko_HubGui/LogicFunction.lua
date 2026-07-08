@@ -914,7 +914,7 @@ local espMasterEnabled = false
 local espShowDistance = true
 local espShowName = true
 local espShowGenPercent = true
-local espHideDoneGen = false
+local espShowDoneGen = true
 local espPlayerState = false
 
 local COLOR_DOWNED = Color3.fromRGB(255, 0, 0)
@@ -1192,7 +1192,7 @@ local function applyGen(model: Model)
         local regress = model:GetAttribute("Regressing")
         local done = p >= 100
         -- Hide finished generators
-        if espHideDoneGen and done then
+        if not espShowDoneGen and done then
             if hl then hl.Enabled = false end
             if bill then bill.Enabled = false end
             return
@@ -1573,8 +1573,8 @@ function ESP.SetShowGenPercent(enabled: boolean)
     espShowGenPercent = enabled
 end
 
-function ESP.SetHideDoneGen(enabled: boolean)
-    espHideDoneGen = enabled
+function ESP.SetShowDoneGen(enabled: boolean)
+    espShowDoneGen = enabled
 end
 
 function ESP.SetPlayerState(enabled: boolean)
@@ -2376,7 +2376,7 @@ task.spawn(function()
     if cfg.neko_esp_distance ~= nil then espShowDistance = cfg.neko_esp_distance end
     if cfg.neko_esp ~= nil then espMasterEnabled = cfg.neko_esp; ESP.UpdateStates() end
     if cfg.neko_esp_genpct ~= nil then espShowGenPercent = cfg.neko_esp_genpct end
-    if cfg.neko_esp_hidedone ~= nil then espHideDoneGen = cfg.neko_esp_hidedone end
+    if cfg.neko_esp_showdone ~= nil then espShowDoneGen = cfg.neko_esp_showdone end
     if cfg.neko_esp_playerstate ~= nil then espPlayerState = cfg.neko_esp_playerstate end
     if cfg.neko_parry ~= nil then autoParryEnabled = cfg.neko_parry end
     if cfg.neko_dodge ~= nil then autoDodgeEnabled = cfg.neko_dodge end
