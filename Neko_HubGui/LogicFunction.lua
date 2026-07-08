@@ -1711,8 +1711,11 @@ local AIM_CONFIG = {
     veilAimLock     = true,      -- kamera lock ballistic pas throw stance
     veilEnableLead  = true,
     veilFovRadius   = 150,
+    veilAimSmooth   = 0.35,
     veilShowFov     = false,     -- POV circle (visual). set true kalau mau
 }
+
+local syncFloatingIcons: () -> ()
 
 local Logic = {
     Combat = {
@@ -1771,9 +1774,11 @@ local Logic = {
         end,
         SetSilentAim = function(value: boolean)
             AIM_CONFIG.silentAimGun = value
+            syncFloatingIcons()
         end,
         SetAimLock = function(value: boolean)
             AIM_CONFIG.aimLock = value
+            syncFloatingIcons()
         end,
         SetWallcheck = function(value: boolean)
             AIM_CONFIG.aimWallcheck = value
@@ -1797,15 +1802,20 @@ local Logic = {
         -- Aim Veil Setters
         SetVeilSilentAim = function(value: boolean)
             AIM_CONFIG.veilSilentAim = value
+            syncFloatingIcons()
         end,
         SetVeilAimLock = function(value: boolean)
             AIM_CONFIG.veilAimLock = value
+            syncFloatingIcons()
         end,
         SetVeilEnableLead = function(value: boolean)
             AIM_CONFIG.veilEnableLead = value
         end,
         SetVeilFovRadius = function(value: number)
             AIM_CONFIG.veilFovRadius = value
+        end,
+        SetVeilSmooth = function(value: number)
+            AIM_CONFIG.veilAimSmooth = value
         end,
         SetVeilShowFov = function(value: boolean)
             AIM_CONFIG.veilShowFov = value
@@ -1997,7 +2007,6 @@ local function initVeil()
     local veilFovFollowMouse = false
     local VEIL_TARGET_PART = "HumanoidRootPart"
     local VEIL_GRAVITY = 98.1
-    local VEIL_AIM_SMOOTH = 0.35
     local VEIL_AIM_LOCK_SPEED = 165
 
     -- ponytail: single combined aim prediction offsets as requested (10-40 -> 1.8, 40-70 -> 2.2)
@@ -2128,7 +2137,7 @@ local function initVeil()
                 if AIM_CONFIG.veilAimLock and holding then
                     local cam = Workspace.CurrentCamera local origin = cam.CFrame.Position
                     local dir = veilSolveLead(origin, pos, veilTargetVel, VEIL_AIM_LOCK_SPEED, VEIL_GRAVITY)
-                    if dir then local goal = CFrame.new(origin, origin + dir) cam.CFrame = cam.CFrame:Lerp(goal, VEIL_AIM_SMOOTH) end
+                    if dir then local goal = CFrame.new(origin, origin + dir) cam.CFrame = cam.CFrame:Lerp(goal, AIM_CONFIG.veilAimSmooth) end
                 end
             else veilTargetPos, veilTargetVel = nil, nil veilSampleName = nil if veilFovCircle then veilFovCircle.Color = Color3.fromRGB(255, 255, 255) end end
         else veilTargetPos, veilTargetVel = nil, nil veilSampleName = nil if veilFovCircle then veilFovCircle.Color = Color3.fromRGB(255, 255, 255) end end
@@ -2217,19 +2226,11 @@ veilBtn.Position = UDim2.new(1, -54, 0.5, 50)
 veilBtn.Parent = aimGui
 
 local function updateAimGunIcon()
-    if aimGunActive then
-        gunBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        gunBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    end
+    gunBtn.BackgroundColor3 = aimGunActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 40, 40)
 end
 
 local function updateAimVeilIcon()
-    if aimVeilActive then
-        veilBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        veilBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    end
+    veilBtn.BackgroundColor3 = aimVeilActive and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 40, 40)
 end
 
 gunBtn.MouseButton1Click:Connect(function()
@@ -2246,7 +2247,6 @@ veilBtn.MouseButton1Click:Connect(function()
     updateAimVeilIcon()
 end)
 
--- Sync icons when aim config changes via dropdowns
 local function syncFloatingIcons()
     aimGunActive = AIM_CONFIG.silentAimGun or AIM_CONFIG.aimLock
     aimVeilActive = AIM_CONFIG.veilSilentAim or AIM_CONFIG.veilAimLock
@@ -2255,19 +2255,6 @@ local function syncFloatingIcons()
 end
 
 syncFloatingIcons()
-
--- Hide/show and sync icons based on aim state
-RunService.RenderStepped:Connect(function()
-    local gunActive = AIM_CONFIG.silentAimGun or AIM_CONFIG.aimLock
-    local veilActive = AIM_CONFIG.veilSilentAim or AIM_CONFIG.veilAimLock
-    aimGui.Enabled = gunActive or veilActive
-    gunBtn.Visible = gunActive
-    veilBtn.Visible = veilActive
-    aimGunActive = gunActive
-    aimVeilActive = veilActive
-    updateAimGunIcon()
-    updateAimVeilIcon()
-end)
 
 -- =====================================================================
 -- KILLER NOTIFICATION (shows on match start: spectator → Survivors/Killer)
@@ -2418,6 +2405,7 @@ task.spawn(function()
     end
     if cfg.neko_aimveil_showfov ~= nil then AIM_CONFIG.veilShowFov = cfg.neko_aimveil_showfov end
     if cfg.neko_aimveil_fov ~= nil then AIM_CONFIG.veilFovRadius = cfg.neko_aimveil_fov end
+    if cfg.neko_aimveil_smooth ~= nil then AIM_CONFIG.veilAimSmooth = cfg.neko_aimveil_smooth end
     if cfg.neko_aimveil_predict ~= nil then AIM_CONFIG.veilEnableLead = cfg.neko_aimveil_predict end
     if cfg.neko_color_hook ~= nil then espColors.Hook = cfg.neko_color_hook end
 end)

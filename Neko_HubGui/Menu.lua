@@ -537,6 +537,18 @@ AimVeilSection:Slider({
     end
 })
 
+AimVeilSection:Slider({
+    Title = "Aim Smooth (Veil)",
+    Value = { Min = 0.05, Max = 1.0, Default = 0.35 },
+    Flag = "neko_aimveil_smooth",
+    Callback = function(value: number)
+        if Aim and Aim.SetVeilSmooth then
+            Aim.SetVeilSmooth(value)
+            NekoConfig:Save()
+        end
+    end
+})
+
 AimVeilSection:Toggle({
     Title = "Predict Movement (Veil)",
     Desc = "Predict target movement trajectory for Veil",
