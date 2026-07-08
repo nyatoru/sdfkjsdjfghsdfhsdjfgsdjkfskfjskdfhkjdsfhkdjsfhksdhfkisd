@@ -2316,7 +2316,7 @@ local function cacheKillerName()
     lastKillerName = "?"
 end
 
-local function showEndMatchNotification()
+local function showMatchNotification()
     local text: string
     local color: Color3
     if lastWasKiller then
@@ -2367,7 +2367,7 @@ local function onTeamChanged()
     local nowInGame = isInGame()
     if nowInGame and not notifWasInGame then
         cacheKillerName()
-        showEndMatchNotification()
+        showMatchNotification()
     end
     notifWasInGame = nowInGame
 end
