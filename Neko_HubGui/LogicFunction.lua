@@ -2364,5 +2364,35 @@ installNamecallHook()
 
 print("[Aim Hub] Pistol & Veil script loaded. Silent aim supported: " .. tostring(silentSupported))
 
+-- Sync WindUI config to logic state (WindUI Config:Load() restores UI visuals but
+-- does NOT fire callbacks, so logic variables keep their defaults without this)
+task.spawn(function()
+    local ok, content = pcall(readfile, "WindUI/Neko_Hub/configs/NekoHubConfig.json")
+    if not ok then return end
+    local ok2, cfg = pcall(function() return game:GetService("HttpService"):JSONDecode(content) end)
+    if not ok2 or type(cfg) ~= "table" then return end
+
+    if cfg.neko_esp_name ~= nil then espShowName = cfg.neko_esp_name end
+    if cfg.neko_esp_distance ~= nil then espShowDistance = cfg.neko_esp_distance end
+    if cfg.neko_esp ~= nil then espMasterEnabled = cfg.neko_esp; ESP.UpdateStates() end
+    if cfg.neko_esp_genpct ~= nil then espShowGenPercent = cfg.neko_esp_genpct end
+    if cfg.neko_esp_hidedone ~= nil then espHideDoneGen = cfg.neko_esp_hidedone end
+    if cfg.neko_esp_playerstate ~= nil then espPlayerState = cfg.neko_esp_playerstate end
+    if cfg.neko_parry ~= nil then autoParryEnabled = cfg.neko_parry end
+    if cfg.neko_dodge ~= nil then autoDodgeEnabled = cfg.neko_dodge end
+    if cfg.neko_pallet ~= nil then autoPalletEnabled = cfg.neko_pallet end
+    if cfg.neko_skillcheck ~= nil then autoSkillcheckEnabled = cfg.neko_skillcheck end
+    if cfg.neko_vault ~= nil then fastVaultEnabled = cfg.neko_vault end
+    if cfg.neko_player_zoom ~= nil then PlayerConfig.UnlimitedZoom = cfg.neko_player_zoom; applyUnlimitedZoom() end
+    if cfg.neko_player_fov ~= nil then PlayerConfig.FOVEnabled = cfg.neko_player_fov; applyCameraFOV() end
+    if cfg.neko_player_fovval ~= nil then PlayerConfig.FOV = cfg.neko_player_fovval; applyCameraFOV() end
+    if cfg.neko_aim_wallcheck ~= nil then AIM_CONFIG.aimWallcheck = cfg.neko_aim_wallcheck end
+    if cfg.neko_aim_showfov ~= nil then AIM_CONFIG.aimShowFov = cfg.neko_aim_showfov end
+    if cfg.neko_aimveil_showfov ~= nil then AIM_CONFIG.veilShowFov = cfg.neko_aimveil_showfov end
+    if cfg.neko_aim_predict ~= nil then AIM_CONFIG.aimEnableLead = cfg.neko_aim_predict end
+    if cfg.neko_aimveil_predict ~= nil then AIM_CONFIG.veilEnableLead = cfg.neko_aimveil_predict end
+    if cfg.neko_color_hook ~= nil then espColors.Hook = cfg.neko_color_hook end
+end)
+
 getgenv().Neko_HubLogic = Logic
 return Logic
