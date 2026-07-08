@@ -73,9 +73,9 @@ Exports a single `Logic` table at `getgenv().Neko_HubLogic` with sections:
 - Auto-rehooks on `CharacterAdded`.
 
 ### Killer notification
-- One-time popup on match start (character spawn with health >0).
-- Shows `"⚠ Killer: [name]"` (amber) or `"⚔ YOU ARE THE KILLER"` (red).
-- Auto-destroys after 4s. Re-arms on respawn.
+- One-time popup on **match end** (team transitions to spectator/lobby).
+- Shows `"⚠ Match Over — Killer: [name]"` (amber) or `"⚔ Match Over — You were the Killer"` (red).
+- Auto-destroys after 4s. Re-arms on next match.
 
 ## Key Gotchas
 
