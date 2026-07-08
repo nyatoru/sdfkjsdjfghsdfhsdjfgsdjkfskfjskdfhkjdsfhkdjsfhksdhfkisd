@@ -2278,33 +2278,43 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =====================================================================
--- KILLER NOTIFICATION (one-time on match start)
+-- KILLER NOTIFICATION (shows on match END, not start)
 -- =====================================================================
-local function showKillerNotification()
-    local team = LocalPlayer.Team
-    local teamNameStr = team and team.Name or ""
+local lastKillerName = "?"
+local lastWasKiller = false
 
-    local text: string
-    local color: Color3
-
-    if string.find(string.lower(teamNameStr), "killer") or string.find(string.lower(teamNameStr), "hunter") then
-        text = "⚔ YOU ARE THE KILLER"
-        color = Color3.fromRGB(255, 70, 80)
-    else
-        local killerName = "?"
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer then
-                local t = p.Team
-                local tn = t and t.Name or ""
-                if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
-                    killerName = p.Name
-                    break
-                end
+local function cacheKillerName()
+    if not isInGame() then return end
+    lastWasKiller = false
+    local teamName = LocalPlayer.Team and LocalPlayer.Team.Name or ""
+    if string.find(string.lower(teamName), "killer") or string.find(string.lower(teamName), "hunter") then
+        lastKillerName = "?"
+        lastWasKiller = true
+        return
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local tn = p.Team and p.Team.Name or ""
+            if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
+                lastKillerName = p.Name
+                return
             end
         end
-        if killerName == "?" then return end
-        text = "⚠ Killer: " .. killerName
+    end
+    lastKillerName = "?"
+end
+
+local function showEndMatchNotification()
+    local text: string
+    local color: Color3
+    if lastWasKiller then
+        text = "⚔ Match Over — You were the Killer"
+        color = Color3.fromRGB(255, 70, 80)
+    elseif lastKillerName ~= "?" then
+        text = "⚠ Match Over — Killer: " .. lastKillerName
         color = Color3.fromRGB(255, 200, 100)
+    else
+        return
     end
 
     local notifGui = Instance.new("ScreenGui")
@@ -2339,23 +2349,20 @@ local function showKillerNotification()
     end)
 end
 
-local notifShown = false
-LocalPlayer.CharacterAdded:Connect(function()
-    notifShown = false
-end)
-
-task.spawn(function()
-    while true do
-        if not notifShown and LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 then
-                notifShown = true
-                showKillerNotification()
-            end
-        end
-        task.wait(1)
+-- Cache killer name during match, show on match end
+local notifWasInGame = isInGame()
+local function onTeamChanged()
+    local nowInGame = isInGame()
+    if nowInGame then
+        cacheKillerName()
+    elseif notifWasInGame then
+        showEndMatchNotification()
     end
-end)
+    notifWasInGame = nowInGame
+end
+
+LocalPlayer:GetPropertyChangedSignal("Team"):Connect(onTeamChanged)
+cacheKillerName()
 
 -- ==================== INIT ========================
 initTwistOfFate()
