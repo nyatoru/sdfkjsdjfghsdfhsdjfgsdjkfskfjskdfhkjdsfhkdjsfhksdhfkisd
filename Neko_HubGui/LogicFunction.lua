@@ -914,7 +914,7 @@ local espMasterEnabled = false
 local espShowDistance = true
 local espShowName = true
 local espShowGenPercent = true
-local espShowDoneGen = true
+local espShowDoneGen = false
 local espPlayerState = false
 
 local COLOR_DOWNED = Color3.fromRGB(255, 0, 0)

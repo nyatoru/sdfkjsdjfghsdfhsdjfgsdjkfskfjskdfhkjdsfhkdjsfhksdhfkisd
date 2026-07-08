@@ -268,7 +268,7 @@ ESPSection:Toggle({
 ESPSection:Toggle({
     Title = "Show Done Generator",
     Desc = "Show generator ESP when fully repaired (100%)",
-    Value = true,
+    Value = false,
     Flag = "neko_esp_showdone",
     Callback = function(value: boolean)
         if ESP and ESP.SetShowDoneGen then
