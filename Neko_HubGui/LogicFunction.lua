@@ -12,6 +12,17 @@ local Workspace         = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+local function isKillerTeamName(name: string): boolean
+    local lower = string.lower(name)
+    return string.find(lower, "killer") ~= nil or string.find(lower, "hunter") ~= nil
+end
+
+local function isKillerPlayer(plr: Player): boolean
+    local tm = plr.Team
+    if tm and isKillerTeamName(tm.Name) then return true end
+    return plr:GetAttribute("Role") == "Killer" or plr:GetAttribute("Killer") == true
+end
+
 -- Clean up any standalone UI if present
 pcall(function()
     local cg = (gethui and gethui()) or game:GetService("CoreGui")
@@ -204,7 +215,7 @@ local function doParryPress()
     lastPrePress = os.clock()
     local ctrl = resolveParryController()
     if ctrl then
-        local ok, err = pcall(function()
+        local ok = pcall(function()
             if ctrl:CanUse() then ctrl:Parry() end
         end)
         if not ok then parryController = nil end
@@ -469,7 +480,7 @@ local TOUCH_ID = 8822
 local ActionPath = "Survivor-mob.Controls.action.check"
 
 local function GetActionTarget()
-    local current = LocalPlayer:FindFirstChild("PlayerGui")
+    local current: Instance? = PlayerGui
     for segment in string.gmatch(ActionPath, "[^%.]+") do
         current = current and current:FindFirstChild(segment)
     end
@@ -753,7 +764,7 @@ local droppedDebounce: { [BasePart]: boolean } = {}
 
 local function getKillerCharacter(): Model?
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Team and (string.find(string.lower(p.Team.Name), "killer") or string.find(string.lower(p.Team.Name), "hunter")) then
+        if p ~= LocalPlayer and isKillerPlayer(p) then
             return p.Character
         end
     end
@@ -1100,49 +1111,33 @@ local function ensureDistLoop()
                     end
 
                     -- Player state (only when toggled on)
-                    if espPlayerState and t.kind == "Player" and t.anchor and t.anchor.Parent then
-                        local plrChar = t.anchor:FindFirstAncestorOfClass("Model")
-                        if plrChar then
-                            local hum = plrChar:FindFirstChildOfClass("Humanoid")
-                            local isDowned = false
-                            if hum then
-                                isDowned = hum.Health <= 0
-                                    or hum.Health < 2
-                                    or plrChar:GetAttribute("Downed") == true
-                                    or plrChar:GetAttribute("IsDown") == true
-                                    or plrChar:GetAttribute("Knocked") == true
+                    if espPlayerState and t.kind == "Player" then
+                        local hum = model:FindFirstChildOfClass("Humanoid")
+                        local isDowned = hum and (hum.Health < 2
+                            or model:GetAttribute("Downed") == true
+                            or model:GetAttribute("IsDown") == true
+                            or model:GetAttribute("Knocked") == true) or false
+                        if isDowned then
+                            if t.hl then
+                                t.hl.FillColor = espColors.PlayerDowned
+                                t.hl.OutlineColor = espColors.PlayerDowned
                             end
-                            if isDowned then
-                                if t.hl then
-                                    t.hl.FillColor = espColors.PlayerDowned
-                                    t.hl.OutlineColor = espColors.PlayerDowned
+                            if t.nameL then
+                                if not t.nameL.Text:find("^DOWN ") then
+                                    t.nameL.Text = "DOWN " .. t.nameL.Text
                                 end
-                                if t.nameL then
-                                    local baseName = t.nameL.Text:gsub("^.- ", "")
-                                    if not t.nameL.Text:find("^DOWN") then
-                                        t.nameL.Text = "DOWN " .. baseName
-                                    end
-                                    t.nameL.TextColor3 = espColors.PlayerDowned
-                                end
-                            else
-                                local origCol = espColors.Player
-                                local plr = Players:GetPlayerFromCharacter(plrChar)
-                                if plr then
-                                    if plr.Team and (string.find(string.lower(plr.Team.Name), "killer") or string.find(string.lower(plr.Team.Name), "hunter")) then
-                                        origCol = COLOR_KILLER
-                                    elseif plr:GetAttribute("Role") == "Killer" or plr:GetAttribute("Killer") then
-                                        origCol = COLOR_KILLER
-                                    end
-                                end
-                                if t.hl then
-                                    t.hl.FillColor = origCol
-                                    t.hl.OutlineColor = origCol
-                                end
-                                if t.nameL then
-                                    local baseName = t.nameL.Text:gsub("^DOWN ", "")
-                                    t.nameL.Text = baseName
-                                    t.nameL.TextColor3 = origCol
-                                end
+                                t.nameL.TextColor3 = espColors.PlayerDowned
+                            end
+                        else
+                            local plr = Players:GetPlayerFromCharacter(model)
+                            local origCol = plr and playerColor(plr) or espColors.Player
+                            if t.hl then
+                                t.hl.FillColor = origCol
+                                t.hl.OutlineColor = origCol
+                            end
+                            if t.nameL then
+                                t.nameL.Text = t.nameL.Text:gsub("^DOWN ", "")
+                                t.nameL.TextColor3 = origCol
                             end
                         end
                     end
@@ -1457,13 +1452,7 @@ local function anchorPlayer(char: Model): BasePart?
 end
 
 local function playerColor(plr: Player): Color3
-    local tm = plr.Team
-    if tm and (string.find(string.lower(tm.Name), "killer") or string.find(string.lower(tm.Name), "hunter")) then
-        return COLOR_KILLER
-    end
-    if plr:GetAttribute("Role") == "Killer" or plr:GetAttribute("Killer") then
-        return COLOR_KILLER
-    end
+    if isKillerPlayer(plr) then return COLOR_KILLER end
     return COLOR_PLAYER
 end
 
@@ -1483,12 +1472,7 @@ local function applyPlayer(char: Model, plr: Player)
     if tracked[char] then return end
     local anchor = anchorPlayer(char)
     if not anchor then return end
-    local col = espColors.Player
-    if plr.Team and (string.find(string.lower(plr.Team.Name), "killer") or string.find(string.lower(plr.Team.Name), "hunter")) then
-        col = COLOR_KILLER
-    elseif plr:GetAttribute("Role") == "Killer" or plr:GetAttribute("Killer") then
-        col = COLOR_KILLER
-    end
+    local col = playerColor(plr)
     local hl = mkHighlight(char, col)
     local bill, nameL, sub = mkBillboard(anchor, col, plr.Name)
     tracked[char] = { hl = hl, bill = bill, anchor = anchor, nameL = nameL, sub = sub, wantDist = true, kind = "Player" }
@@ -2256,15 +2240,8 @@ local function syncFloatingIcons()
     updateAimVeilIcon()
 end
 
-local function isKillerTeam(): boolean
-    local team = LocalPlayer.Team
-    if not team then return false end
-    local tn = string.lower(team.Name)
-    return string.find(tn, "killer") ~= nil or string.find(tn, "hunter") ~= nil
-end
-
 local function updateVeilBtnVisibility()
-    veilBtn.Visible = not lobbyLocked and isKillerTeam()
+    veilBtn.Visible = not lobbyLocked and isKillerPlayer(LocalPlayer)
 end
 
 syncFloatingIcons()
@@ -2280,18 +2257,15 @@ local function cacheKillerName()
     if not isInGame() then return end
     lastWasKiller = false
     local teamName = LocalPlayer.Team and LocalPlayer.Team.Name or ""
-    if string.find(string.lower(teamName), "killer") or string.find(string.lower(teamName), "hunter") then
+    if isKillerTeamName(teamName) then
         lastKillerName = "?"
         lastWasKiller = true
         return
     end
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local tn = p.Team and p.Team.Name or ""
-            if string.find(string.lower(tn), "killer") or string.find(string.lower(tn), "hunter") then
-                lastKillerName = p.Name
-                return
-            end
+        if p ~= LocalPlayer and isKillerPlayer(p) then
+            lastKillerName = p.Name
+            return
         end
     end
     lastKillerName = "?"
